@@ -70,5 +70,5 @@ plt.legend(title="Legend", loc='upper left', fontsize=14)
 plt.tight_layout()
 plt.ylim(20,70)
 # Save the plot
-plt.savefig(path_ + '/outputs/frequency_domain_by_filepath/frequency_domain.png', bbox_inches='tight') 
+plt.savefig(path_ + '/outputs/frequency_domain_by_filepath/frequency_domain_dataset.png', bbox_inches='tight') 
 #plt.show()  

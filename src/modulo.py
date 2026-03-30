@@ -232,6 +232,7 @@ def filtro_A(df):
 ############################################################################################
 
 def devices_time_domain(arquivos, year, descriptor, output_name = None, save_file = None):
+    
     # Empty list to store DataFrames
     dfs = []
     if descriptor == "LAeq":
@@ -286,7 +287,7 @@ def devices_time_domain(arquivos, year, descriptor, output_name = None, save_fil
 ########################             FREQUENCY DOMAIN           ############################
 ############################################################################################
 
-def read_frequency_domain(filepath, year, output_name, save_file = None):
+def read_frequency_domain(filepath, year, output_name = None, save_file = None):
     #empty list to add the Dataframes
     global colunas_leq
 

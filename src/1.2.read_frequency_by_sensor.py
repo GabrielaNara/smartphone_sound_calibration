@@ -46,19 +46,17 @@ sensor_number = reference
 mobiles = match_sensors[
     match_sensors[f'{location}-sensor'] == sensor_number]['device'].dropna().unique().tolist() 
 
-# Build file names 
-file_names = [f"{m}_{location}" for m in mobiles]
-file_names.append(f"{sensor_number}_{location}")
-archives = []
-base_path = os.path.join(path_, "dataset")
-for name in file_names:
-    pattern = os.path.join(base_path, f"{name}*")
-    matches = glob.glob(pattern)
-    archives.extend([os.path.abspath(f) for f in matches])
-
-for archive in archives:
-    destination = os.path.join(temp_dir, os.path.basename(archive))
-    shutil.copy(archive, destination)
+# --- copy mobile-sensors to a temporary path ---
+mobile_path = os.path.join(path_, "dataset/mobile_sensors")
+for m in mobiles:
+    pattern = os.path.join(mobile_path, f"{m}_{location}*")
+    for file in glob.glob(pattern):
+        shutil.copy(file, os.path.join(temp_dir, os.path.basename(file)))      
+# --- copy fix-sensors to a temporary path ---
+fix_path = os.path.join(path_, "dataset/fix_sensors")
+pattern_fix = os.path.join(fix_path, f"{sensor_number}_{location}*")
+for file in glob.glob(pattern_fix):
+    shutil.copy(file, os.path.join(temp_dir, os.path.basename(file)))
     
 ##read_files_to_excel(filepath, year, output_name,  save_file = None)##
 df = read_frequency_domain(temp_dir, openoise_version,  output_name, save_file = "yes")
@@ -93,5 +91,5 @@ plt.subplots_adjust(right=0.3)  # Aumenta a margem esquerda para acomodar a lege
 plt.legend(title="Legend", loc='upper left', fontsize=14)
 plt.tight_layout()
 plt.ylim(20,70)
-plt.savefig(path_+ f'/outputs/frequency_domain_by_sensor/frequency_{sensor_number}.png', bbox_inches='tight') #save
-#plt.show()  
+#plt.savefig(path_+ f'/outputs/frequency_domain_by_sensor/frequency_{sensor_number}.png', bbox_inches='tight') #save
+plt.show()  

@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 path_ = os.getcwd() 
 from modulo import devices_time_domain, calculate_LAEQmean_general
+path_ = path_.split("\\src")[0]
 
 ############################################################################################
 #############################               INPUT            ############################### 
@@ -21,13 +22,13 @@ descriptor = "LAeq" #CHOOSE BETWEEN "1Khz" or "Laeq"
 dataset = "/dataset" # Folder with the measurements file
 
 # CHOOSE THE LOCATION 
-location = 'p2' 
+location = 'p1' 
 
 ############################################################################################
 #############################          PROCESSING            ############################### 
 ############################################################################################
 # Get all unique fix sensors from the matching table
-match_sensors  =  pd.read_excel("outputs/match_sensors_output.xlsx", header=0) 
+match_sensors  =  pd.read_excel(path_ +"/outputs/match_sensors_output.xlsx", header=0) 
 fix_sensors = match_sensors[f'{location}-sensor'].dropna().unique().tolist()
 # Dataframe for error results
 DELTA = pd.DataFrame(columns=['LA50','LAeq','Δ_LA50','Δ_LAeq'])
@@ -44,18 +45,28 @@ for sensor_number in fix_sensors:
     file_names = [f"{m}_{location}" for m in mobiles]
     file_names.append(f"{sensor_number}_{location}")
     archives = []
-    base_path = os.path.join(path_, "dataset")
-    for name in file_names:
-        pattern = os.path.join(base_path, f"{name}*")
+    mobile_path = os.path.join(path_, "dataset/mobile_sensors")
+    fix_path = os.path.join(path_, "dataset/fix_sensors")
+    
+    # --- MOBILE FILES ---
+    mobile_names = [f"{m}_{location}" for m in mobiles]
+    for name in mobile_names:
+        pattern = os.path.join(mobile_path, f"{name}*")
         matches = glob.glob(pattern)
         archives.extend([os.path.abspath(f) for f in matches])
+    
+    # --- FIX FILE ---
+    fix_name = f"{sensor_number}_{location}"
+    pattern_fix = os.path.join(fix_path, f"{fix_name}*")
+    matches_fix = glob.glob(pattern_fix)
+    archives.extend([os.path.abspath(f) for f in matches_fix])
 
     #def devices_time_domain(arquivos, year, descriptor, output_name = None, save_file = None)
     merged_df = devices_time_domain(archives, year, descriptor,"no", "no")
     merged_df.columns = merged_df.columns.str.split("_").str[0]
 
     # Save the result to Excel
-    merged_df.to_excel(f"outputs/time_series_by_sensor/time_serie_{sensor_number}_{location}.xlsx",sheet_name='time_domain',index=False)
+    merged_df.to_excel(path_+f"/outputs/time_series_by_sensor/time_serie_{sensor_number}_{location}.xlsx",sheet_name='time_domain',index=False)
     
     ############################################################################################
     #####################              STATISTIC ANALYSIS           ############################
@@ -137,4 +148,4 @@ for sensor_number in fix_sensors:
     plt.savefig(f'outputs/time_series_by_sensor/time_serie_{sensor_number}_{location}.png')          
     plt.show()  # Show the plot    
 
-DELTA.to_excel(f'outputs/time_series_by_sensor/__delta_{location}_{descriptor}.xlsx', index=False) 
+DELTA.to_excel(path_+f'/outputs/time_series_by_sensor/__delta_{location}_{descriptor}.xlsx', index=False) 
