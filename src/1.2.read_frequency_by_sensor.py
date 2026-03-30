@@ -1,0 +1,97 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jan 23 17:01:42 2025
+
+@author: narag
+"""
+import os
+import glob
+import pandas as pd
+import shutil
+import matplotlib.pyplot as plt
+
+from modulo import read_frequency_domain
+path_ = os.getcwd() 
+path_ = path_.split("\\src")[0]
+
+############################################################################################
+#############################               INPUT            ############################### 
+############################################################################################
+
+filepath = path_ + "/dataset"
+openoise_version = "2024"
+output_name = "measurements"
+
+# CHOOSE THE REFERENCE AND THE LOCATION (mandatory to search files)
+location = 'p1' #in the example: p1 or p2
+reference = 'fixsensor-m4' #in the example: "referenceiphone-m10" for p2, "fixsensor-m2" or "fixsensor-m4" for p1
+
+############################################################################################
+#########################              PROCESSING              #############################
+############################################################################################ 
+# Create a temporary filepath do add the files
+temp_dir = filepath + "/temp"
+# clear the existent content in the tempoerary file
+if os.path.exists(temp_dir):
+    shutil.rmtree(temp_dir)
+os.makedirs(temp_dir, exist_ok=True)
+
+# Get all unique fix sensors from the matching table
+match_sensors  =  pd.read_excel(path_+"/outputs/match_sensors_output.xlsx", header=0) 
+fix_sensors = match_sensors[f'{location}-sensor'].dropna().unique().tolist()
+
+#for sensor_number in fix_sensors: #if you want to iteract with many sensors
+sensor_number = reference
+# Find mobile sensors associated with this fix sensor
+mobiles = match_sensors[
+    match_sensors[f'{location}-sensor'] == sensor_number]['device'].dropna().unique().tolist() 
+
+# Build file names 
+file_names = [f"{m}_{location}" for m in mobiles]
+file_names.append(f"{sensor_number}_{location}")
+archives = []
+base_path = os.path.join(path_, "dataset")
+for name in file_names:
+    pattern = os.path.join(base_path, f"{name}*")
+    matches = glob.glob(pattern)
+    archives.extend([os.path.abspath(f) for f in matches])
+
+for archive in archives:
+    destination = os.path.join(temp_dir, os.path.basename(archive))
+    shutil.copy(archive, destination)
+    
+##read_files_to_excel(filepath, year, output_name,  save_file = None)##
+df = read_frequency_domain(temp_dir, openoise_version,  output_name, save_file = "yes")
+df.to_excel(path_+f'/outputs/frequency_domain_by_sensor/frequency_{sensor_number}_.xlsx', index=False)
+
+############################################################################################
+#####################              GRAPHICAL RESULT            #############################
+############################################################################################
+df.columns = df.columns.str.replace('leq_', '')
+df.replace(0, pd.NA, inplace=True)
+
+# Definindo as colunas de frequências
+freq_columns = ['63','80','100', '125', '160', '200', '250', '315', '400', '500',
+       '630', '800', '1000', '1250', '1600', '2000', '2500', '3150', '4000',
+       '5000', '6300', '8000', '10000', '12500', '16000']
+
+# Plot
+plt.figure(figsize=(14, 7), dpi=300)
+for i, row in df.iterrows():
+    row_clean = pd.to_numeric(row[freq_columns], errors='coerce')
+    device = row['device']
+    if device.startswith(reference):
+        plt.plot(freq_columns, row_clean, label=device, color="black", linestyle='--', linewidth=4)  
+    else:
+        plt.plot(freq_columns, row_clean, label=device, linewidth=2)
+plt.ylabel("Sound Pressure Level (dBA)", fontsize=18, labelpad=10)
+plt.xlabel("Frequency (Hz)", fontsize=18, labelpad=10)
+plt.xticks(rotation=45, fontsize=16) 
+plt.yticks(fontsize=16)
+plt.grid(True, color='#E0E0E0')
+plt.subplots_adjust(right=0.3)  # Aumenta a margem esquerda para acomodar a legenda
+plt.legend(title="Legend", loc='upper left', fontsize=14)
+plt.tight_layout()
+plt.ylim(20,70)
+plt.savefig(path_+ f'/outputs/frequency_domain_by_sensor/frequency_{sensor_number}.png', bbox_inches='tight') #save
+#plt.show()  
