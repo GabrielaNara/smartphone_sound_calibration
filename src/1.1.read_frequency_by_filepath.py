@@ -9,21 +9,23 @@ import glob
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from modulo import read_frequency_domain
-
 path_ = os.getcwd() 
+from modulo import read_frequency_domain
 path_ = path_.split("\\src")[0]
 
 ############################################################################################
 #############################               INPUT            ############################### 
 ############################################################################################
 
+# CHOOSE INPUT (optional)
 filepath = path_ + "/dataset"
+
+# OPTIONAL INPUT
+reference = 'fixsensor-m2'  #in the example: "fixsensorA-m4", "fixsensorA-m2", "fixsensorB-m10"
+
+# DEFAULT PARAMETERS
 openoise_version = "2024"
 output_name = "measurements"
-
-# CHOOSE THE REFERENCE (optional)
-reference = 'fixsensor-m2' 
 
 ############################################################################################
 #########################              PROCESSING              #############################
@@ -38,8 +40,8 @@ for name in file_names:
 
 ##read_files_to_excel(filepath, year, output_name, save_file = None)##
 df = read_frequency_domain(filepath, openoise_version, output_name, save_file = "yes")
-df.to_excel(path_+'/outputs/frequency_domain_by_filepath/%s.xlsx' %(output_name), index=False)
-
+df.to_excel(filepath + "/%s.xlsx" %(output_name), index=False)
+'''
 ############################################################################################
 #####################              GRAPHICAL RESULT            #############################
 ############################################################################################
@@ -70,5 +72,6 @@ plt.legend(title="Legend", loc='upper left', fontsize=14)
 plt.tight_layout()
 plt.ylim(20,70)
 # Save the plot
-plt.savefig(path_ + '/outputs/frequency_domain_by_filepath/frequency_domain_dataset.png', bbox_inches='tight') 
-#plt.show()  
+plt.savefig(filepath + "/%s.xlsx" %(output_name), bbox_inches='tight') 
+#plt.show() 
+''' 

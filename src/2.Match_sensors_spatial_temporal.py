@@ -10,9 +10,9 @@ Code for match the time between the mobile sensors and the fix sensors at the ex
 3. Creating table with mobile and fix sensors values by point       
 4. Statistics Analysis
 
-INPUT: An excel (.xlsx) file with sheets "all_sensors" and "fix_sensors", with the following columns names:
-    all sensors: device,	measurement,	Time,	LAeq(1s)
-    fix sensor: point,	sensor,	time,	laeq
+INPUT: An excel (.xlsx) file with sheets "mobile_sensors" and "fix_sensors", with the following columns names:
+    all sensors: device, device_model
+    fix sensor: device,	location, x, y
 
 OUTPUT: A new excel file (.xlsx) with values by sensor
 """
@@ -21,53 +21,52 @@ import glob
 import pandas as pd
 import geopandas as gpd
 
-from modulo import read_frequency_domain
-
 path_ = os.getcwd() 
+from modulo import read_frequency_domain
 path_ = path_.split("\\src")[0]
 
 ############################################################################################
 #############################               INPUT            ############################### 
 ############################################################################################
 
-openoise_version = "2024" #CHOOSE BETWEEN "2023" or "2024"
-file_path = "calibration-devices.xlsx" #ANO 2024
-save_file = "yes" #CHOOSE BETWEEN "yes" or no
-
+# CHOOSE INPUT
 time_tolerance = "3min"
 participants_informed_location = "yes" #CHOOSE BETWEEN "yes" or "no" related if location is already provided
+
+# DEFAULT PARAMETERS
+openoise_version = "2024" #CHOOSE BETWEEN "2023" or "2024"
+save_file = "yes" #CHOOSE BETWEEN "yes" or no
+fix_path = os.path.join(path_, "dataset/fix_sensors") #filepath where to find the fix_sensors
+mobile_path =  mobile_path = os.path.join(path_, "dataset/mobile_sensors")  #filepath where to find the mobile_sensors
 
 ############################################################################################
 # PREPRARING THE DATASET
 ############################################################################################
 
 # --- FIX SENSORS ---
-filepath_temp = path_+"/dataset/fix_sensors"
 archives = []
-for root, dirs, files in os.walk(filepath_temp):
+for root, dirs, files in os.walk(fix_path):
     for file in files:
         temp_path = os.path.join(root, file)
         archives.append(temp_path)
-
 # adjust time        
-fix_sensors = read_frequency_domain(filepath_temp, openoise_version)
+fix_sensors = read_frequency_domain(fix_path, openoise_version)
 fix_sensors['datetime'] = pd.to_datetime(
     fix_sensors['Date'].astype(str) + ' ' + fix_sensors['Time'].astype(str), dayfirst=True,   errors='coerce') 
 
 # --- MOBILE SENSORS ---
-filepath_temp =  path_+"/dataset/mobile_sensors"
-file_names = [arquivo for arquivo in os.listdir(filepath_temp)]
+file_names = [arquivo for arquivo in os.listdir(mobile_path)]
 arquivos = [] 
 for name in file_names: 
-    pattern = os.path.join(filepath_temp) 
+    pattern = os.path.join(mobile_path) 
     arquivos.extend(glob.glob(pattern))
 # adjust time      
-mobile_sensors = read_frequency_domain(filepath_temp, openoise_version)
+mobile_sensors = read_frequency_domain(mobile_path, openoise_version)
 mobile_sensors['datetime'] = pd.to_datetime(
     mobile_sensors['Date'].astype(str) + ' ' + mobile_sensors['Time'].astype(str),dayfirst=True,errors='coerce')
 
 # ADDING Location geoposition (if not given) 
-calibration_table =  pd.read_excel(path_ + "/calibration-devices.xlsx",sheet_name="fix_sensors")
+calibration_table =  pd.read_excel(path_ + "/input.xlsx",sheet_name="fix_sensors")
 fix_sensors = fix_sensors.drop(columns=['x', 'y', 'z'], errors='ignore')
 fix_sensors = fix_sensors.merge(
     calibration_table[['location', 'x', 'y', 'z']],left_on='measurement',

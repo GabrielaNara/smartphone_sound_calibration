@@ -38,7 +38,7 @@ def utc_to_hora(time_in_millis):
     dt = datetime.datetime.fromtimestamp(time_in_millis_br / 1000.0, tz=datetime.timezone.utc)
     hora_utc = str(dt).split(" ")[1]     #15:04:57.609000+00:00
     hora = str(hora_utc).split(".")[0]   #15:04:57 
-    date = dt.strftime("%d/%m/%y")
+    date = dt.strftime("%Y-%m-%d")
     
     return date, hora
 

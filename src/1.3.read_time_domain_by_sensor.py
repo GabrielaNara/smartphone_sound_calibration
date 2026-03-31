@@ -15,14 +15,15 @@ path_ = path_.split("\\src")[0]
 ############################################################################################
 #############################               INPUT            ############################### 
 ############################################################################################
-# CHOOSE THE STRING SEPARATOR
-year = "2024" #CHOOSE BETWEEN "2023" or "2024"
+
+# CHOOSE INPUT
+location = 'p2' #in the example: p1 or p2
+
+# DEFAULT PARAMETERS
+openoise_version = "2024" #CHOOSE BETWEEN "2023" or "2024"
 filter_reference = 'yes' # CHOOSE BETWEEN 'yes' or 'no'
 descriptor = "LAeq" #CHOOSE BETWEEN "1Khz" or "Laeq"
 dataset = "/dataset" # Folder with the measurements file
-
-# CHOOSE THE LOCATION 
-location = 'p1' 
 
 ############################################################################################
 #############################          PROCESSING            ############################### 
@@ -34,12 +35,10 @@ fix_sensors = match_sensors[f'{location}-sensor'].dropna().unique().tolist()
 DELTA = pd.DataFrame(columns=['LA50','LAeq','Δ_LA50','Δ_LAeq'])
 
 for sensor_number in fix_sensors:
-    # sensor_number = reference  #YOU CAN ADD YOUR REFERENCE TO AVOID ITERATION
+    #sensor_number = reference  # IN CASE YOU PREFER A UNIQUE SENSOR
     # Find mobile sensors associated with this fix sensor
     mobiles = match_sensors[
         match_sensors[f'{location}-sensor'] == sensor_number]['device'].dropna().unique().tolist() 
-    if len(mobiles) == 0:
-        continue
     
     # Build file names 
     file_names = [f"{m}_{location}" for m in mobiles]
@@ -61,11 +60,11 @@ for sensor_number in fix_sensors:
     matches_fix = glob.glob(pattern_fix)
     archives.extend([os.path.abspath(f) for f in matches_fix])
 
-    #def devices_time_domain(arquivos, year, descriptor, output_name = None, save_file = None)
-    merged_df = devices_time_domain(archives, year, descriptor,"no", "no")
+    # --- APPLY TIME DOMAIN FUNCTION ---
+    merged_df = devices_time_domain(archives, openoise_version, descriptor,"no", "no")
     merged_df.columns = merged_df.columns.str.split("_").str[0]
 
-    # Save the result to Excel
+    # Save the file
     merged_df.to_excel(path_+f"/outputs/time_series_by_sensor/time_serie_{sensor_number}_{location}.xlsx",sheet_name='time_domain',index=False)
     
     ############################################################################################
@@ -123,7 +122,7 @@ for sensor_number in fix_sensors:
     merged_df['Time'] = merged_df['Time'].astype(str)
     
     # Plot configuration
-    fig, ax = plt.subplots(figsize=(32,12))
+    fig, ax = plt.subplots(figsize=(14,7))
     for column in merged_df.columns:
         if column != 'Time':
             if column == sensor_number: # Plot with black dashed line
@@ -132,20 +131,21 @@ for sensor_number in fix_sensors:
                 ax.plot(merged_df['Time'], pd.to_numeric(merged_df[column], errors='coerce'), label=column)
     # Add labels and title
     ax.set_xlabel('Time',fontsize=20)
-    ax.set_title('Devices in Time -- location %s -- %s' %(location,sensor_number),fontsize=30)
+    #ax.set_title('Devices in Time -- location %s -- %s' %(location,sensor_number),fontsize=30)
     if descriptor == "1Khz":
-        ax.set_title('Devices in Time -- location %s -- %s --- 1 kHz ----' %(location,sensor_number),fontsize=30)
+        #ax.set_title('Devices in Time -- location %s -- %s --- 1 kHz ----' %(location,sensor_number),fontsize=25)
         ax.set_ylabel('LAeq 1kHz (1s)',fontsize=25)
     else:
-        ax.set_title('Devices in Time -- location %s -- %s' %(location,sensor_number),fontsize=30)
-        ax.set_ylabel('LAeq(1s)',fontsize=25)
-    ax.tick_params(axis='both', labelsize=18)  # Ajuste o tamanho da fonte dos valores dos eixos
+        #ax.set_title('Devices in Time -- location %s -- %s' %(location,sensor_number),fontsize=25)
+        ax.set_ylabel('LAeq(1s)',fontsize=20)
+    ax.tick_params(axis='y',labelsize=16)     # Size of labels axe Y
+    ax.tick_params(axis='x', labelrotation=45, labelsize=14)  # Size of labels axe x
     # Format x-axis to show time properly
     ax.xaxis.set_major_locator(plt.MaxNLocator(11))  # Limit number of x-ticks
-    ax.legend(fontsize=18)  # Add a legend
+    ax.legend(fontsize=14)  # Add a legend
     ax.grid(True)  # Add a grid
     # Save the plot
-    plt.savefig(f'outputs/time_series_by_sensor/time_serie_{sensor_number}_{location}.png')          
-    plt.show()  # Show the plot    
+    plt.savefig(path_+f'/outputs/time_series_by_sensor/time_serie_{sensor_number}_{location}.png',bbox_inches='tight')          
+    plt.show()   
 
 DELTA.to_excel(path_+f'/outputs/time_series_by_sensor/__delta_{location}_{descriptor}.xlsx', index=False) 
