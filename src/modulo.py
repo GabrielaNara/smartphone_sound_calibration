@@ -149,6 +149,8 @@ def extract_openoise(arquivo, year):
             continue  # Pula as duas primeiras colunas, a quinta coluna e 'Time' 
         df_measure[column] = df_measure[column].apply(lambda x: str(x).replace(',', '.') if isinstance(x, str) else x)
         df_measure[column] = pd.to_numeric(df_measure[column], errors='coerce')
+    df_measure['Date'] = pd.to_datetime(df_measure['Date'], errors='coerce')
+    df_measure['Date'] = df_measure['Date'].dt.strftime('%Y-%m-%d')
         
     # adicionando colunas padrão
     device = legend.split(string_separator)[0]
@@ -346,6 +348,7 @@ def read_frequency_domain(filepath, year, output_name = None, save_file = None):
         elif arquivo.endswith('.xlsx'): 
             try:
                 df = pd.read_excel(arquivo, sheet_name="Time History", header=0)
+                df = df.iloc[1:]
                 # preparing the file
                 device = legend.split(string_separator)[0]
                 measurement = legend.split(string_separator)[1].split(seting_separator_exclude)[0]
@@ -354,7 +357,8 @@ def read_frequency_domain(filepath, year, output_name = None, save_file = None):
                 df["duracao"] = len(df.index)
                 # rename columns to adjust to the pattern
                 df.columns = df.columns.str.replace('1/3 LZeq ', 'leq_', regex=False) 
-                df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.date
+                df['Date'] = pd.to_datetime(df['Date'], dayfirst=True, errors='coerce')
+                df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')
                 if 'Time' in df.columns:
                     if isinstance(df['Time'].iloc[0], datetime.time):  
                         df['Time'] = df['Time'].apply(lambda x: x.strftime('%H:%M:%S') if pd.notnull(x) else None)

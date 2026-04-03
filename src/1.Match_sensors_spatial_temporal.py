@@ -17,9 +17,8 @@ INPUT: An excel (.xlsx) file with sheets "mobile_sensors" and "fix_sensors", wit
 OUTPUT: A new excel file (.xlsx) with values by sensor
 """
 import os
-import glob
 import pandas as pd
-import geopandas as gpd
+#import geopandas as gpd
 
 path_ = os.getcwd() 
 from modulo import read_frequency_domain
@@ -37,40 +36,22 @@ participants_informed_location = "yes" #CHOOSE BETWEEN "yes" or "no" related if 
 openoise_version = "2024" #CHOOSE BETWEEN "2023" or "2024"
 save_file = "yes" #CHOOSE BETWEEN "yes" or no
 fix_path = os.path.join(path_, "dataset/fix_sensors") #filepath where to find the fix_sensors
-mobile_path =  mobile_path = os.path.join(path_, "dataset/mobile_sensors")  #filepath where to find the mobile_sensors
+mobile_path =  os.path.join(path_, "dataset/mobile_sensors")  #filepath where to find the mobile_sensors
+calibration_table =  pd.read_excel(path_ + "/dataset/input.xlsx",sheet_name="fix_sensors") #path where to find the inputs
 
 ############################################################################################
 # PREPRARING THE DATASET
 ############################################################################################
 
-# --- FIX SENSORS ---
-archives = []
-for root, dirs, files in os.walk(fix_path):
-    for file in files:
-        temp_path = os.path.join(root, file)
-        archives.append(temp_path)
-# adjust time        
+# --- FIX SENSORS ---      
 fix_sensors = read_frequency_domain(fix_path, openoise_version)
 fix_sensors['datetime'] = pd.to_datetime(
-    fix_sensors['Date'].astype(str) + ' ' + fix_sensors['Time'].astype(str), dayfirst=True,   errors='coerce') 
+    fix_sensors['Date'].astype(str) + ' ' + fix_sensors['Time'].astype(str),   errors='coerce') 
 
-# --- MOBILE SENSORS ---
-file_names = [arquivo for arquivo in os.listdir(mobile_path)]
-arquivos = [] 
-for name in file_names: 
-    pattern = os.path.join(mobile_path) 
-    arquivos.extend(glob.glob(pattern))
-# adjust time      
+# --- MOBILE SENSORS ---   
 mobile_sensors = read_frequency_domain(mobile_path, openoise_version)
 mobile_sensors['datetime'] = pd.to_datetime(
-    mobile_sensors['Date'].astype(str) + ' ' + mobile_sensors['Time'].astype(str),dayfirst=True,errors='coerce')
-
-# ADDING Location geoposition (if not given) 
-calibration_table =  pd.read_excel(path_ + "/input.xlsx",sheet_name="fix_sensors")
-fix_sensors = fix_sensors.drop(columns=['x', 'y', 'z'], errors='ignore')
-fix_sensors = fix_sensors.merge(
-    calibration_table[['location', 'x', 'y', 'z']],left_on='measurement',
-    right_on='location',how='left').drop(columns='location')
+    mobile_sensors['Date'].astype(str) + ' ' + mobile_sensors['Time'].astype(str),errors='coerce')
 
 ############################################################################################
 ############################################################################################
@@ -78,34 +59,37 @@ fix_sensors = fix_sensors.merge(
 ############################################################################################
 ############################################################################################
 
-# --- FIX SENSORS ---
-fix_unique = fix_sensors.drop_duplicates(subset=['x','y'])
-gdf_fix = gpd.GeoDataFrame(fix_unique,geometry=gpd.points_from_xy(fix_unique['y'], fix_unique['x']),crs="EPSG:4326")
-gdf_fix = gdf_fix.to_crs(epsg=3857)
+if participants_informed_location == "no":
+    # ADDING Location geoposition
+    fix_sensors = fix_sensors.drop(columns=['x', 'y', 'z'], errors='ignore')
+    fix_sensors = fix_sensors.merge(
+    calibration_table[['location', 'x', 'y', 'z']],left_on='measurement',
+    right_on='location',how='left').drop(columns='location')
 
-# --- MOBILE SENSORS ---
-gdf_mobile = gpd.GeoDataFrame(mobile_sensors,geometry=gpd.points_from_xy(mobile_sensors['x'], mobile_sensors['y']),crs="EPSG:4326")
-gdf_mobile = gdf_mobile.to_crs(epsg=3857)
+    # --- FIX SENSORS ---
+    fix_unique = fix_sensors.drop_duplicates(subset=['x','y'])
+    gdf_fix = gpd.GeoDataFrame(fix_unique,geometry=gpd.points_from_xy(fix_unique['y'], fix_unique['x']),crs="EPSG:4326")
+    gdf_fix = gdf_fix.to_crs(epsg=3857)
 
-# --- SJOIN_NEAREST  --- 
-joined = gpd.sjoin_nearest(
-    gdf_mobile,
-    gdf_fix[['measurement', 'geometry']],
-    how='left',
-    distance_col='distance')
+    # --- MOBILE SENSORS ---
+    gdf_mobile = gpd.GeoDataFrame(mobile_sensors,geometry=gpd.points_from_xy(mobile_sensors['x'], mobile_sensors['y']),crs="EPSG:4326")
+    gdf_mobile = gdf_mobile.to_crs(epsg=3857)
 
-mobile_sensors['nearest_location'] = joined['measurement_right'].values
-mobile_sensors['nearest_distance'] = joined['distance'].values
+    # --- SJOIN_NEAREST  --- 
+    joined = gpd.sjoin_nearest(
+        gdf_mobile,
+        gdf_fix[['measurement', 'geometry']],
+        how='left',
+        distance_col='distance')
+
+    mobile_sensors['nearest_location'] = joined['measurement_right'].values
+    mobile_sensors['nearest_distance'] = joined['distance'].values
 
 ############################################################################################
-############################################################################################
-#           2. TEMPOERAL MATCHING  
-############################################################################################
+#           2. TEMPORAL MATCHING  
 ############################################################################################
 
-# loop por location
 for location in mobile_sensors['measurement'].dropna().unique():
-
     # --- FIX SENSORS ---
     fix_filtered = fix_sensors[fix_sensors['measurement'] == location].copy()
     fix_filtered = fix_filtered.dropna(subset=['datetime'])
@@ -129,14 +113,12 @@ for location in mobile_sensors['measurement'].dropna().unique():
         direction='nearest',
         tolerance=pd.Timedelta(time_tolerance))
 
-    # --- ESCREVER DE VOLTA NO DATAFRAME ORIGINAL ---
+    # --- ANOTTATE THE MATCHES ---
     mobile_sensors.loc[mobile_filtered.index, 'match_fix_sensor'] = merged['device_y'].values
     mobile_sensors.loc[mobile_filtered.index, 'time_fix_sensor'] = merged['datetime_fix'].values
 
 ############################################################################################
-############################################################################################
 #             3. Creating table with mobile and fix sensors values by point         
-############################################################################################
 ############################################################################################
 
 # --- PIVOTS ---
